@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>メダカと勉強する日々</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <h1>🐟 メダカと勉強する日々</h1>
+
+    <canvas id="tank" width="600" height="320"></canvas>
+
+    <div class="stats">
+      <div class="pill"><div class="num" id="stat-fish">1</div><div class="lbl">おさかな</div></div>
+      <div class="pill"><div class="num" id="stat-correct">0</div><div class="lbl">正解数</div></div>
+      <div class="pill"><div class="num" id="stat-next">10</div><div class="lbl">次の1匹まで</div></div>
+      <div class="pill"><div class="num" id="stat-streak">0</div><div class="lbl">連続正解</div></div>
+      <div class="pill"><div class="num" id="stat-answered">0</div><div class="lbl">回答数</div></div>
+    </div>
+
+    <div id="subject-bar">
+      <span>📚 科目: <strong id="current-subject-name">—</strong></span>
+      <button id="open-subjects">科目の選択・追加</button>
+    </div>
+
+    <pre id="question"></pre>
+    <div id="choices"></div>
+    <div class="feedback" id="feedback"></div>
+
+    <div class="controls">
+      <button id="reset">進捗リセット</button>
+      <button id="next">次の問題 ▶</button>
+    </div>
+  </div>
+
+  <!-- 科目の選択・追加モーダル -->
+  <div id="subject-modal" class="modal hidden">
+    <div class="modal-box">
+      <h2>科目を選ぶ・追加する</h2>
+      <ul id="subject-list"></ul>
+
+      <hr />
+      <h3>新しい科目を追加</h3>
+      <p class="hint">
+        CSV または Excel(.xlsx) ファイルをアップロードしてください。<br />
+        <strong>1列目＝問題、2列目＝正解</strong> の形式です（1行目の見出しは自動で除外）。<br />
+        誤答の選択肢は、同じ科目の他の問題の答えから自動で作ります。
+      </p>
+      <input id="new-subject-name" type="text" placeholder="科目名（例：英単語、世界史）" />
+      <input id="new-subject-file" type="file" accept=".csv,.xlsx,.xls" />
+      <div class="add-row">
+        <button id="add-subject">この内容で追加</button>
+        <a id="download-template" href="#">CSVテンプレートをダウンロード</a>
+      </div>
+      <div id="import-msg" class="import-msg"></div>
+
+      <button id="close-subjects" class="close-btn">閉じる</button>
+    </div>
+  </div>
+
+  <script src="lib/xlsx.full.min.js"></script>
+  <script src="quiz.js"></script>
+  <script src="oop-quiz.js"></script>
+  <script src="subjects.js"></script>
+  <script src="aquarium.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
