@@ -18,6 +18,7 @@ function loadUserSubjects() {
 }
 function saveUserSubjects(list) {
   localStorage.setItem(SUBJECTS_KEY, JSON.stringify(list));
+  if (typeof Backup !== "undefined") Backup.sync();
 }
 function allSubjects() {
   return [...BUILTIN_SUBJECTS, ...loadUserSubjects()];
@@ -32,6 +33,7 @@ function getCurrentSubjectId() {
 }
 function setCurrentSubjectId(id) {
   localStorage.setItem(CURRENT_KEY, id);
+  if (typeof Backup !== "undefined") Backup.sync();
 }
 function makeId() {
   return "subj-" + Math.random().toString(36).slice(2, 9);

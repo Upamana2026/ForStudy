@@ -25,6 +25,7 @@ function load() {
 }
 function save() {
   localStorage.setItem(KEY, JSON.stringify(state));
+  if (typeof Backup !== "undefined") Backup.sync();
 }
 
 // --- メダカの増殖・成長ルール（科目に関係なく共通の正解数で決まる） ---
@@ -283,7 +284,82 @@ function onAddSubject() {
   renderSubjectList();
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+// --- バックアップUI ---
+let backupNeedsPermission = false;
+let backupFlashTimer = null;
+
+function refreshBackupUI() {
+  const statusEl = document.getElementById("backup-status");
+  const aBtn = document.getElementById("backup-a");
+  const bBtn = document.getElementById("backup-b");
+
+  if (!Backup.supported) {
+    statusEl.textContent = "💾 バックアップ: 手動（このブラウザは自動保存に非対応）";
+    aBtn.textContent = "書き出し";
+    aBtn.onclick = () => { Backup.downloadFile(); flashBackup("✓ ファイルを書き出しました"); };
+    bBtn.textContent = "読み込み";
+    bBtn.onclick = () => document.getElementById("backup-import-file").click();
+    return;
+  }
+  if (backupNeedsPermission) {
+    statusEl.textContent = "💾 バックアップ: 接続待ち（再接続してください）";
+    aBtn.textContent = "再接続";
+    aBtn.onclick = onBackupReconnect;
+    bBtn.textContent = "別のファイルから復元";
+    bBtn.onclick = onBackupRestore;
+    return;
+  }
+  if (Backup.isLinked()) {
+    statusEl.textContent = "💾 自動保存中: " + Backup.fileName();
+    aBtn.textContent = "保存先を変更";
+    aBtn.onclick = onBackupSetup;
+    bBtn.textContent = "復元";
+    bBtn.onclick = onBackupRestore;
+    return;
+  }
+  statusEl.textContent = "💾 バックアップ: 未設定（このままだと閲覧データ削除で消えます）";
+  aBtn.textContent = "保存先を設定";
+  aBtn.onclick = onBackupSetup;
+  bBtn.textContent = "復元";
+  bBtn.onclick = onBackupRestore;
+}
+
+function flashBackup(text) {
+  document.getElementById("backup-status").textContent = text;
+  clearTimeout(backupFlashTimer);
+  backupFlashTimer = setTimeout(refreshBackupUI, 2600);
+}
+function reloadSoon() { setTimeout(() => location.reload(), 700); }
+
+async function onBackupSetup() {
+  try {
+    await Backup.setup();
+    backupNeedsPermission = false;
+    flashBackup("✓ 自動保存を設定しました");
+    setTimeout(refreshBackupUI, 1200);
+  } catch (e) { if (e.name !== "AbortError") flashBackup("⚠ " + e.message); }
+}
+async function onBackupRestore() {
+  try {
+    await Backup.restore();
+    backupNeedsPermission = false;
+    flashBackup("✓ 復元しました。再読み込みします…");
+    reloadSoon();
+  } catch (e) { if (e.name !== "AbortError") flashBackup("⚠ " + e.message); }
+}
+async function onBackupReconnect() {
+  try {
+    const r = await Backup.reconnect();
+    if (!r.ok) { flashBackup("⚠ 許可されませんでした"); return; }
+    backupNeedsPermission = false;
+    if (r.restored) { flashBackup("✓ 復元しました。再読み込みします…"); reloadSoon(); }
+    else { flashBackup("✓ 再接続しました"); setTimeout(refreshBackupUI, 1200); }
+  } catch (e) { if (e.name !== "AbortError") flashBackup("⚠ " + e.message); }
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  const bk = await Backup.init();          // 先にファイルから自動復元できるか確認
+  backupNeedsPermission = bk.status === "needs-permission";
   load();
   ensureRoster();
   Aquarium.init(document.getElementById("tank"));
@@ -315,4 +391,14 @@ window.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     downloadTemplate();
   };
+
+  document.getElementById("backup-import-file").onchange = async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    try { await Backup.importFile(f); flashBackup("✓ 読み込みました。再読み込みします…"); reloadSoon(); }
+    catch (err) { flashBackup("⚠ " + err.message); }
+  };
+  refreshBackupUI();
+  if (bk.status === "restored") flashBackup("✓ バックアップから復元しました");
 });
