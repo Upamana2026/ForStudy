@@ -37,10 +37,11 @@ function fishCount(correct) {
   return k;
 }
 function nextFishAt(correct) { return fishBornAt(fishCount(correct) + 1); }
+// 成長速度を従来の約半分に（大人になるのに約2倍の正解数が必要）
 function ageToStage(age) {
-  if (age >= 24) return 3;
-  if (age >= 12) return 2;
-  if (age >= 5) return 1;
+  if (age >= 48) return 3;
+  if (age >= 24) return 2;
+  if (age >= 10) return 1;
   return 0;
 }
 // --- 魚の実体管理（種類・15匹上限・卒業） ---
