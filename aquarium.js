@@ -16,14 +16,14 @@ const Aquarium = (() => {
     { hw: 5, hh: 3, tail: 4 },
   ];
 
-  // 種類ごとの見た目設定
+  // 種類ごとの見た目設定（speed: メダカ=1 を基準とした遊泳速度の倍率）
   const SPECIES = {
-    medaka:   { c1: "#f0962e", c2: "#cf7016", c3: "#ffd58a", tcol: "#f7b65a", shape: "slim",  tail: "fan",    eye: "normal" },
-    demekin:  { c1: "#34333c", c2: "#17171c", c3: "#46454f", tcol: "#2a2933", shape: "round", tail: "double", eye: "tele" },
-    comet:    { c1: "#ef5a23", c2: "#c23c12", c3: "#ffd0a0", tcol: "#f47a45", shape: "slim",  tail: "long",   eye: "normal" },
-    panda:    { c1: "#f0f0f3", c2: "#1b1b22", c3: "#ffffff", tcol: "#d8d8de", shape: "round", tail: "double", eye: "tele", pattern: "panda" },
-    pingpong: { c1: "#ff8b3d", c2: "#d96a20", c3: "#fff0d8", tcol: "#ffb066", shape: "ball",  tail: "short",  eye: "normal" },
-    ranchu:   { c1: "#e34b2a", c2: "#b3361b", c3: "#ff9a6a", tcol: "#ef7a52", shape: "round", tail: "short",  eye: "normal", wen: true },
+    medaka:   { c1: "#f0962e", c2: "#cf7016", c3: "#ffd58a", tcol: "#f7b65a", shape: "slim",  tail: "fan",    eye: "normal", speed: 1 },
+    demekin:  { c1: "#34333c", c2: "#17171c", c3: "#46454f", tcol: "#2a2933", shape: "round", tail: "double", eye: "tele", speed: 0.5 },
+    comet:    { c1: "#ef5a23", c2: "#c23c12", c3: "#ffd0a0", tcol: "#f47a45", shape: "slim",  tail: "long",   eye: "normal", speed: 2 },
+    panda:    { c1: "#f0f0f3", c2: "#1b1b22", c3: "#ffffff", tcol: "#d8d8de", shape: "round", tail: "double", eye: "tele", pattern: "panda", speed: 0.5 },
+    pingpong: { c1: "#ff8b3d", c2: "#d96a20", c3: "#fff0d8", tcol: "#ffb066", shape: "ball",  tail: "short",  eye: "normal", speed: 0.7 },
+    ranchu:   { c1: "#e34b2a", c2: "#b3361b", c3: "#ff9a6a", tcol: "#ef7a52", shape: "round", tail: "short",  eye: "normal", wen: true, speed: 1.2 },
   };
 
   function init(canvas) {
@@ -184,6 +184,7 @@ const Aquarium = (() => {
     for (const p of food) p.y += p.vy;
 
     for (const f of fish) {
+      const spd = (SPECIES[f.species] || SPECIES.medaka).speed || 1;
       let nf = null, nd = 1e9;
       for (const p of food) {
         const d = (p.x - f.x) ** 2 + (p.y - f.y) ** 2;
@@ -202,8 +203,8 @@ const Aquarium = (() => {
       }
       f.vx = Math.max(-1.7, Math.min(1.7, f.vx * 0.96));
       f.vy = Math.max(-1.3, Math.min(1.3, f.vy * 0.94));
-      f.x += f.vx;
-      f.y += f.vy;
+      f.x += f.vx * spd;
+      f.y += f.vy * spd;
       if (f.x < 18) { f.x = 18; f.vx = Math.abs(f.vx); }
       if (f.x > W - 18) { f.x = W - 18; f.vx = -Math.abs(f.vx); }
       if (f.y < 28) { f.y = 28; f.vy = Math.abs(f.vy); }
