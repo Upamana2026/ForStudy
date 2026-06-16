@@ -374,6 +374,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   Aquarium.init(document.getElementById("tank"));
   Aquarium.setPopulation(rosterSpecs());
   maybeSpawnCritters();
+  // 起動から1分ごとに、大型生物（ガー・シーラカンス・カメ）が魚の後ろを横切る
+  setInterval(() => Aquarium.spawnPassers(), 60000);
   updateStats();
   refreshSubjectName();
   newQuestion();

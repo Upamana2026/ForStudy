@@ -11,6 +11,9 @@ const Aquarium = (() => {
 
   const CRITTER_SPECIES = ["dojo", "tanishi", "tanago"];
 
+  let passers = []; // アリゲーターガー・シーラカンス・ミドリガメ（魚の後ろを横切って画面外へ去る）
+  const PASSER_SPECIES = ["gar", "coelacanth", "turtle"];
+
   // 成長段階ごとの基本サイズ（セル単位）: 稚魚→小→中→成魚
   // 成魚の最大サイズは従来の半分程度に縮小（成長の大小関係は維持）
   const SIZE = [
@@ -217,6 +220,7 @@ const Aquarium = (() => {
     }
     for (let i = food.length - 1; i >= 0; i--) if (food[i].y > H - PX) food.splice(i, 1);
     updateCritters();
+    updatePassers();
   }
 
   // --- 生き物（ドジョウ・タニシ・タナゴ） ---
@@ -346,6 +350,141 @@ const Aquarium = (() => {
     else drawTanago(c);
   }
 
+  // --- 通過する大型生物（ガー・シーラカンス・カメ） ---
+
+  // 1回の呼び出しで「1種のみ」を選び、その1種を1〜複数匹だけ横切らせる
+  function spawnPassers() {
+    const species = PASSER_SPECIES[Math.floor(Math.random() * PASSER_SPECIES.length)];
+    const dir = Math.random() < 0.5 ? 1 : -1;                  // 進行方向（左右どちらか）
+    let count = 1;                                             // たいてい1匹、たまに2〜3匹
+    if (Math.random() < 0.4) count++;
+    if (Math.random() < 0.15) count++;
+    const margin = 120;
+    for (let k = 0; k < count; k++) {
+      const startX = dir === 1 ? -margin - k * 80 : W + margin + k * 80; // 列をなして登場
+      passers.push({
+        species,
+        dir,
+        x: startX,
+        y: H * 0.28 + Math.random() * H * 0.42,               // 中層〜やや下を通過
+        vx: dir * (0.8 + Math.random() * 0.5),
+        phase: Math.random() * 6.28,
+      });
+    }
+  }
+
+  function updatePassers() {
+    const margin = 140;
+    for (const p of passers) {
+      p.phase += 0.1;
+      p.x += p.vx;
+      p.y += Math.sin(p.phase) * 0.3;                          // ゆったり上下
+    }
+    // 画面外へ去ったものを除去
+    passers = passers.filter((p) => p.x > -margin && p.x < W + margin);
+  }
+
+  function drawGar(p) {
+    const bx = Math.round(p.x / PX), by = Math.round(p.y / PX), dir = p.dir;
+    const rx = 11, ry = 2;
+    // 尾びれ
+    for (let k = 1; k <= 4; k++) {
+      const hh = Math.max(1, ry + 1 - Math.floor(k * 0.4));
+      for (let j = -hh; j <= hh; j++) put(bx - dir * (rx + k), by + j, "#4a5a3a");
+    }
+    // 細長い胴体
+    for (let i = -rx; i <= rx; i++) {
+      const taper = 1 - Math.abs(i) / (rx + 2);
+      const th = Math.max(0, Math.round(ry * taper));
+      for (let j = -th; j <= th; j++) {
+        let c = "#7c8a5e";
+        if (j < 0) c = "#4a5a3a";                              // 背
+        if (j >= th) c = "#c2c8a8";                            // 腹
+        put(bx + i, by + j, c);
+      }
+      if (((i + 50) % 4) === 0 && th > 0) put(bx + i, by, "#2e3a22"); // 斑点
+    }
+    // 長い吻（くちばし状の口）＋歯
+    const sx = bx + dir * rx;
+    for (let k = 1; k <= 5; k++) {
+      put(sx + dir * k, by, "#6e7c52");
+      put(sx + dir * k, by + 1, "#5a6644");
+    }
+    put(sx + dir * 2, by + 2, "#e8e8e0");                      // 歯
+    put(sx + dir * 4, by + 2, "#e8e8e0");
+    put(bx + dir * (rx - 2), by - 1, "#161610");              // 目
+  }
+
+  function drawCoelacanth(p) {
+    const bx = Math.round(p.x / PX), by = Math.round(p.y / PX), dir = p.dir;
+    const rx = 9, ry = 5;
+    // 三つ又の特徴的な尾びれ
+    for (let k = 1; k <= 4; k++) {
+      put(bx - dir * (rx + k), by - 1, "#3a566a");
+      put(bx - dir * (rx + k), by, "#2f4757");
+      put(bx - dir * (rx + k), by + 1, "#3a566a");
+    }
+    put(bx - dir * (rx + 5), by, "#2f4757");                   // 中央の突起
+    // ずんぐりした胴体
+    for (let i = -rx; i <= rx; i++) {
+      for (let j = -ry; j <= ry; j++) {
+        const e = (i / (rx + 0.3)) ** 2 + (j / (ry + 0.3)) ** 2;
+        if (e <= 1) {
+          let c = "#4a6b82";
+          if (j > 1) c = "#7fa0b5";                            // 腹
+          if (e > 0.8) c = "#33505f";                          // 縁
+          if (((i * 3 + j * 5 + 40) % 7) === 0) c = "#d8e4ec"; // 白い斑点
+          put(bx + i, by + j, c);
+        }
+      }
+    }
+    // ローブ状の対びれ（足のように突き出る）
+    put(bx + dir * 2, by + ry + 1, "#3a566a");
+    put(bx + dir * 2, by + ry + 2, "#2f4757");
+    put(bx - dir * 3, by + ry + 1, "#3a566a");
+    put(bx + dir * 3, by - ry - 1, "#3a566a");                 // 背びれ
+    put(bx + dir * (rx - 2), by - 1, "#e8e8ee");              // 目（白）
+    put(bx + dir * (rx - 2), by - 1, "#101014");              // 瞳
+  }
+
+  function drawTurtle(p) {
+    const bx = Math.round(p.x / PX), by = Math.round(p.y / PX), dir = p.dir;
+    const rx = 7, ry = 4;
+    // 甲羅（ドーム状）
+    for (let i = -rx; i <= rx; i++) {
+      for (let j = -ry; j <= 1; j++) {
+        const e = (i / (rx + 0.3)) ** 2 + (j / (ry + 0.3)) ** 2;
+        if (e <= 1) {
+          let c = "#4f7a3a";
+          if (e > 0.78) c = "#355626";                         // 甲羅の縁
+          if (((i + 20) % 3 === 0) && j < 0) c = "#3a6029";    // 甲羅の模様
+          put(bx + i, by + j, c);
+        }
+      }
+    }
+    // 腹甲（下側を明るく）
+    for (let i = -rx + 2; i <= rx - 2; i++) put(bx + i, by + 2, "#c7b06a");
+    // 頭（進行方向へ）＋赤い斑点（ミドリガメの特徴）
+    const hx = bx + dir * (rx + 1);
+    put(hx, by, "#4f7a3a");
+    put(hx + dir, by, "#5c8a44");
+    put(hx, by - 1, "#d23b2b");                                // 耳の赤い線
+    put(hx + dir, by - 1, "#101014");                          // 目
+    // 四肢（ひれ足）
+    put(bx + dir * (rx - 2), by + 3, "#5c8a44");
+    put(bx + dir * (rx - 1), by + 3, "#5c8a44");
+    put(bx - dir * (rx - 2), by + 3, "#5c8a44");
+    put(bx - dir * (rx - 1), by + 3, "#5c8a44");
+    // 尾
+    put(bx - dir * (rx + 1), by + 1, "#4f7a3a");
+  }
+
+  function drawPasser(p) {
+    if (p.species === "gar") drawGar(p);
+    else if (p.species === "coelacanth") drawCoelacanth(p);
+    else drawTurtle(p);
+  }
+
   function draw() {
     const g = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, "#1b6ea8");
@@ -357,6 +496,8 @@ const Aquarium = (() => {
     for (const b of bubbles) ctx.fillRect(Math.round(b.x / PX) * PX, Math.round(b.y / PX) * PX, PX, PX);
 
     drawScenery();
+
+    for (const p of passers) drawPasser(p); // 魚より先に描く＝金魚たちの後ろを通過
 
     ctx.fillStyle = "#caa06a";
     for (const p of food) ctx.fillRect(Math.round(p.x / PX) * PX, Math.round(p.y / PX) * PX, PX, PX);
@@ -371,5 +512,5 @@ const Aquarium = (() => {
     raf = requestAnimationFrame(loop);
   }
 
-  return { init, setPopulation, feed, addCritter };
+  return { init, setPopulation, feed, addCritter, spawnPassers };
 })();
