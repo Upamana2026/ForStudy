@@ -29,8 +29,8 @@ function save() {
 }
 
 // --- メダカの増殖・成長ルール（科目に関係なく共通の正解数で決まる） ---
-// k匹目が生まれる累積正解数: 10 * (k-1)*k/2  → 1匹:0, 2匹:10, 3匹:30, 4匹:60, ...
-function fishBornAt(k) { return 10 * ((k - 1) * k / 2); }
+// k匹目が生まれる累積正解数: 一律5問ごとに1匹  → 1匹:0, 2匹:5, 3匹:10, 4匹:15, ...
+function fishBornAt(k) { return 5 * (k - 1); }
 function fishCount(correct) {
   let k = 1;
   while (fishBornAt(k + 1) <= correct) k++;
