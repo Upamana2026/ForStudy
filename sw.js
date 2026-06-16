@@ -1,11 +1,12 @@
 // sw.js — オフラインでも動くようアセットをキャッシュ
-const CACHE = "medaka-study-v2";
+const CACHE = "medaka-study-v3";
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./quiz.js",
   "./oop-quiz.js",
+  "./taiwan-hua.js",
   "./subjects.js",
   "./aquarium.js",
   "./backup.js",
