@@ -10,6 +10,7 @@ const BUILTIN_ID = "fe-b-basic";
 const BUILTIN_SUBJECTS = [
   { id: BUILTIN_ID, name: "FE試験科目B基礎", type: "procedural", builtin: true, gen: generateQuestion },
   { id: "fe-b-oop", name: "FE試験科目Bオブジェクト指向", type: "procedural", builtin: true, gen: generateOOPQuestion },
+  { id: "fe-b-bit", name: "FE試験科目Bビット操作", type: "procedural", builtin: true, gen: generateBitQuestion },
   // 例外的な組み込み科目（台湾華語）: 単語＋ピンインを出題し、日本語を4択で選ぶ
   { id: "taiwan-hua", name: "台湾華語", type: "bank", builtin: true, questions: typeof TAIWAN_HUA_QUESTIONS !== "undefined" ? TAIWAN_HUA_QUESTIONS : [] },
 ];
