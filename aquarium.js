@@ -4,16 +4,20 @@ const Aquarium = (() => {
   const PX = 6; // 1ドットの大きさ(px)
   let ctx, W, H;
   let fish = [];
+  let critters = []; // ドジョウ・タニシ・タナゴ（魚とは独立。アプリを開いている間ずっと滞在）
   let food = [];
   let bubbles = [];
   let raf = null;
 
+  const CRITTER_SPECIES = ["dojo", "tanishi", "tanago"];
+
   // 成長段階ごとの基本サイズ（セル単位）: 稚魚→小→中→成魚
+  // 成魚の最大サイズは従来の半分程度に縮小（成長の大小関係は維持）
   const SIZE = [
-    { hw: 2, hh: 1, tail: 2 },
+    { hw: 1, hh: 1, tail: 1 },
+    { hw: 2, hh: 1, tail: 1 },
+    { hw: 2, hh: 2, tail: 2 },
     { hw: 3, hh: 2, tail: 2 },
-    { hw: 4, hh: 2, tail: 3 },
-    { hw: 5, hh: 3, tail: 4 },
   ];
 
   // 種類ごとの見た目設定（speed: メダカ=1 を基準とした遊泳速度の倍率）
@@ -212,6 +216,134 @@ const Aquarium = (() => {
       if (Math.abs(f.vx) > 0.05) f.dir = f.vx > 0 ? 1 : -1;
     }
     for (let i = food.length - 1; i >= 0; i--) if (food[i].y > H - PX) food.splice(i, 1);
+    updateCritters();
+  }
+
+  // --- 生き物（ドジョウ・タニシ・タナゴ） ---
+
+  function newCritter(species) {
+    const c = { species, phase: Math.random() * 6.28, dir: Math.random() < 0.5 ? -1 : 1 };
+    if (species === "tanishi") {
+      c.x = 30 + Math.random() * (W - 60);
+      c.y = H - 10;                              // 底を這う
+      c.spd = 0.06 + Math.random() * 0.05;
+    } else if (species === "dojo") {
+      c.x = 30 + Math.random() * (W - 60);
+      c.y = H - 22;                              // 底付近を泳ぐ
+      c.vx = c.dir * (0.3 + Math.random() * 0.3);
+    } else {                                     // tanago: 中層を泳ぐ
+      c.x = 30 + Math.random() * (W - 60);
+      c.y = H * 0.35 + Math.random() * H * 0.3;
+      c.vx = (Math.random() < 0.5 ? -1 : 1) * (0.5 + Math.random() * 0.4);
+      c.vy = 0;
+    }
+    return c;
+  }
+
+  function addCritter(species) {
+    if (!CRITTER_SPECIES.includes(species)) return;
+    critters.push(newCritter(species));
+  }
+
+  function updateCritters() {
+    for (const c of critters) {
+      c.phase += 0.08;
+      if (c.species === "tanishi") {
+        c.x += c.dir * c.spd;
+        c.y = H - 10;
+        if (c.x < 16) { c.x = 16; c.dir = 1; }
+        if (c.x > W - 16) { c.x = W - 16; c.dir = -1; }
+      } else if (c.species === "dojo") {
+        if (Math.random() < 0.005) c.vx = -c.vx;     // たまに向きを変える
+        c.vx = Math.max(-0.9, Math.min(0.9, c.vx));
+        c.x += c.vx;
+        c.y = H - 22 + Math.sin(c.phase * 0.5) * 6;   // 底に沿ってゆるく上下
+        if (c.x < 18) { c.x = 18; c.vx = Math.abs(c.vx); }
+        if (c.x > W - 18) { c.x = W - 18; c.vx = -Math.abs(c.vx); }
+        if (Math.abs(c.vx) > 0.05) c.dir = c.vx > 0 ? 1 : -1;
+      } else {                                        // tanago: メダカ風の遊泳
+        c.vy += Math.sin(c.phase) * 0.02 - (c.y - H * 0.45) * 0.0006;
+        if (Math.abs(c.vx) < 0.3) c.vx += (Math.random() - 0.5) * 0.1;
+        c.vx = Math.max(-1.4, Math.min(1.4, c.vx * 0.97));
+        c.vy = Math.max(-1.0, Math.min(1.0, c.vy * 0.95));
+        c.x += c.vx;
+        c.y += c.vy;
+        if (c.x < 18) { c.x = 18; c.vx = Math.abs(c.vx); }
+        if (c.x > W - 18) { c.x = W - 18; c.vx = -Math.abs(c.vx); }
+        if (c.y < 30) { c.y = 30; c.vy = Math.abs(c.vy); }
+        if (c.y > H - 18) { c.y = H - 18; c.vy = -Math.abs(c.vy); }
+        if (Math.abs(c.vx) > 0.05) c.dir = c.vx > 0 ? 1 : -1;
+      }
+    }
+  }
+
+  function drawDojo(c) {
+    const bx = Math.round(c.x / PX), by = Math.round(c.y / PX), dir = c.dir;
+    const L = 8;
+    for (let i = -L; i <= L; i++) {
+      const front = i * dir;                          // 頭側で +、尾側で -
+      const wig = Math.round(Math.sin(c.phase + i * 0.5) * 1.3);
+      const yy = by + wig;
+      const thin = front > L - 3 || front < -L + 1;   // 口先と尾は細く
+      put(bx + i, yy, "#9c7a44");
+      if (!thin) {
+        put(bx + i, yy - 1, "#6e5226");               // 背
+        put(bx + i, yy + 1, "#c4a060");               // 腹
+        if (((i + 99) % 3) === 0) put(bx + i, yy, "#5a3f1c"); // 斑点
+      }
+    }
+    const hx = bx + dir * L;
+    const hy = by + Math.round(Math.sin(c.phase + L * 0.5) * 1.3);
+    put(hx, hy, "#2a2118");          // 目
+    put(hx + dir, hy, "#6e5226");    // 口先
+    put(hx + dir, hy + 1, "#6e5226"); // ひげ
+    put(hx + dir, hy - 1, "#6e5226"); // ひげ
+  }
+
+  function drawTanishi(c) {
+    const bx = Math.round(c.x / PX), by = Math.round(c.y / PX), dir = c.dir;
+    for (let i = -2; i <= 2; i++) put(bx + i, by + 1, "#b9a98c"); // 足
+    put(bx - dir * 3, by + 1, "#cdbfa6");                          // 前に伸びる足
+    put(bx + dir * 2, by, "#8a7a5e");                              // 触角
+    const shell = [
+      [0, -3], [1, -3], [-1, -2], [0, -2], [1, -2], [2, -2],
+      [-2, -1], [-1, -1], [0, -1], [1, -1], [2, -1],
+      [-2, 0], [-1, 0], [0, 0], [1, 0],
+    ];
+    for (const [sx, sy] of shell) put(bx + sx, by + sy, "#6b5436");
+    put(bx, by - 2, "#8a6e44");      // うずまきハイライト
+    put(bx + 1, by - 1, "#8a6e44");
+    put(bx - 1, by - 1, "#4d3c24");
+  }
+
+  function drawTanago(c) {
+    const bx = Math.round(c.x / PX), by = Math.round(c.y / PX), dir = c.dir;
+    const rx = 3, ry = 2;
+    const base = bx - dir * rx;                       // 尾びれ
+    for (let k = 1; k <= 2; k++) {
+      const hh = Math.max(0, ry - (k - 1));
+      for (let j = -hh; j <= hh; j++) put(base - dir * k, by + j, "#8fb8c8");
+    }
+    for (let i = -rx; i <= rx; i++) {                 // 胴体
+      for (let j = -ry; j <= ry; j++) {
+        const e = (i / (rx + 0.3)) ** 2 + (j / (ry + 0.3)) ** 2;
+        if (e <= 1) {
+          let col = "#cfe0e8";
+          if (j < 0) col = "#3a6e8a";                 // 背
+          if (j > 0) col = "#eef4f7";                 // 腹
+          if (e > 0.78) col = "#2f5a72";              // 縁
+          if (j === 0 && i * dir < 1) col = "#e0788f"; // 婚姻色の帯
+          put(bx + i, by + j, col);
+        }
+      }
+    }
+    put(bx + dir * (rx - 1), by - 1, "#16161c");      // 目
+  }
+
+  function drawCritter(c) {
+    if (c.species === "tanishi") drawTanishi(c);
+    else if (c.species === "dojo") drawDojo(c);
+    else drawTanago(c);
   }
 
   function draw() {
@@ -230,6 +362,7 @@ const Aquarium = (() => {
     for (const p of food) ctx.fillRect(Math.round(p.x / PX) * PX, Math.round(p.y / PX) * PX, PX, PX);
 
     for (const f of fish) drawFish(f);
+    for (const c of critters) drawCritter(c);
   }
 
   function loop() {
@@ -238,5 +371,5 @@ const Aquarium = (() => {
     raf = requestAnimationFrame(loop);
   }
 
-  return { init, setPopulation, feed };
+  return { init, setPopulation, feed, addCritter };
 })();

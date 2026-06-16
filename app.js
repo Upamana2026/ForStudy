@@ -87,6 +87,14 @@ function spawnFish(correct) {
   return { born: baby.species, graduated };
 }
 
+// アプリ起動時の抽選。ドジョウ・タニシ・タナゴが遊びに来る（アプリを閉じるまで滞在）。
+// 各種それぞれ約21%で出現 → いずれかが現れる確率 ≈ 50%。2〜3種が同時に出ることもある。
+function maybeSpawnCritters() {
+  ["dojo", "tanishi", "tanago"].forEach((sp) => {
+    if (Math.random() < 0.21) Aquarium.addCritter(sp);
+  });
+}
+
 // 現在の名簿を水槽用のspecsに変換
 function rosterSpecs() {
   return state.fish.map((f) => ({ stage: ageToStage(state.correct - f.bornAt), species: f.species }));
@@ -365,6 +373,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   ensureRoster();
   Aquarium.init(document.getElementById("tank"));
   Aquarium.setPopulation(rosterSpecs());
+  maybeSpawnCritters();
   updateStats();
   refreshSubjectName();
   newQuestion();
