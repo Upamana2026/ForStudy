@@ -1,5 +1,5 @@
 // sw.js — オフラインでも動くようアセットをキャッシュ
-const CACHE = "medaka-study-v8";
+const CACHE = "medaka-study-v9";
 const ASSETS = [
   "./",
   "./index.html",

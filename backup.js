@@ -12,8 +12,8 @@ const Backup = (() => {
   const DB_NAME = "medaka_backup_db";
   const STORE = "handles";
   const HANDLE_KEY = "file";
-  // バックアップ対象の localStorage キー（進捗・ユーザー科目・選択中科目）
-  const KEYS = ["medaka_quiz_v1", "medaka_subjects_v1", "medaka_current_subject_v1"];
+  // バックアップ対象の localStorage キー（進捗・ユーザー科目・選択中科目・削除した組み込み科目）
+  const KEYS = ["medaka_quiz_v1", "medaka_subjects_v1", "medaka_current_subject_v1", "medaka_hidden_builtins_v1"];
   const PROGRESS_KEY = "medaka_quiz_v1";
 
   const supported = typeof window !== "undefined" && typeof window.showSaveFilePicker === "function";

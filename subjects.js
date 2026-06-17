@@ -5,6 +5,7 @@
 
 const SUBJECTS_KEY = "medaka_subjects_v1";
 const CURRENT_KEY = "medaka_current_subject_v1";
+const HIDDEN_BUILTINS_KEY = "medaka_hidden_builtins_v1"; // ユーザーが削除した組み込み科目のID
 const BUILTIN_ID = "fe-b-basic";
 
 const BUILTIN_SUBJECTS = [
@@ -23,16 +24,30 @@ function saveUserSubjects(list) {
   localStorage.setItem(SUBJECTS_KEY, JSON.stringify(list));
   if (typeof Backup !== "undefined") Backup.sync();
 }
+// ユーザーが削除した組み込み科目のID一覧（組み込み科目は消さずに非表示にして管理）
+function loadHiddenBuiltins() {
+  try { return JSON.parse(localStorage.getItem(HIDDEN_BUILTINS_KEY)) || []; }
+  catch (e) { return []; }
+}
+function saveHiddenBuiltins(list) {
+  localStorage.setItem(HIDDEN_BUILTINS_KEY, JSON.stringify(list));
+  if (typeof Backup !== "undefined") Backup.sync();
+}
 function allSubjects() {
-  return [...BUILTIN_SUBJECTS, ...loadUserSubjects()];
+  const hidden = loadHiddenBuiltins();
+  const builtins = BUILTIN_SUBJECTS.filter((s) => !hidden.includes(s.id));
+  return [...builtins, ...loadUserSubjects()];
 }
 function getSubject(id) {
-  return allSubjects().find((s) => s.id === id) || BUILTIN_SUBJECTS[0];
+  const all = allSubjects();
+  return all.find((s) => s.id === id) || all[0] || BUILTIN_SUBJECTS[0];
 }
 function getCurrentSubjectId() {
   const id = localStorage.getItem(CURRENT_KEY) || BUILTIN_ID;
-  // 削除済みのIDが残っていたら組み込みに戻す
-  return allSubjects().some((s) => s.id === id) ? id : BUILTIN_ID;
+  // 削除済み（非表示）のIDが残っていたら、表示中の先頭の科目に切り替える
+  const all = allSubjects();
+  if (all.some((s) => s.id === id)) return id;
+  return all.length ? all[0].id : BUILTIN_ID;
 }
 function setCurrentSubjectId(id) {
   localStorage.setItem(CURRENT_KEY, id);
@@ -51,8 +66,16 @@ function createSubject(name, questions) {
   return subj;
 }
 function deleteSubject(id) {
-  saveUserSubjects(loadUserSubjects().filter((s) => s.id !== id));
-  if (localStorage.getItem(CURRENT_KEY) === id) setCurrentSubjectId(BUILTIN_ID);
+  const isBuiltin = BUILTIN_SUBJECTS.some((s) => s.id === id);
+  if (isBuiltin) {
+    // 組み込み科目はデータを残したまま非表示にする
+    const hidden = loadHiddenBuiltins();
+    if (!hidden.includes(id)) { hidden.push(id); saveHiddenBuiltins(hidden); }
+  } else {
+    saveUserSubjects(loadUserSubjects().filter((s) => s.id !== id));
+  }
+  // 削除したのが選択中の科目なら、残っている科目に切り替える
+  if (localStorage.getItem(CURRENT_KEY) === id) setCurrentSubjectId(getCurrentSubjectId());
 }
 
 // 既存科目に問題を追記（バンク型のユーザー科目のみ。CSV/Excelの形式は新規追加と同じ）

@@ -218,34 +218,41 @@ function renderSubjectList() {
     li.appendChild(label);
     li.appendChild(selBtn);
 
-    if (!s.builtin) {
-      if (s.type === "bank") {
-        const addBtn = document.createElement("button");
-        addBtn.textContent = "問題を追加";
-        addBtn.className = "add-q";
-        const fileInput = document.createElement("input");
-        fileInput.type = "file";
-        fileInput.accept = ".csv,.xlsx,.xls";
-        fileInput.style.display = "none";
-        fileInput.onchange = (ev) => onAppendFileChosen(ev, s.id);
-        addBtn.onclick = () => fileInput.click();
-        li.appendChild(addBtn);
-        li.appendChild(fileInput);
-      }
-
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "削除";
-      delBtn.className = "del";
-      delBtn.onclick = () => {
-        if (confirm(`科目「${s.name}」を削除しますか？`)) {
-          deleteSubject(s.id);
-          refreshSubjectName();
-          newQuestion();
-          renderSubjectList();
-        }
-      };
-      li.appendChild(delBtn);
+    // 問題の追加はユーザー作成のバンク型科目のみ
+    if (!s.builtin && s.type === "bank") {
+      const addBtn = document.createElement("button");
+      addBtn.textContent = "問題を追加";
+      addBtn.className = "add-q";
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".csv,.xlsx,.xls";
+      fileInput.style.display = "none";
+      fileInput.onchange = (ev) => onAppendFileChosen(ev, s.id);
+      addBtn.onclick = () => fileInput.click();
+      li.appendChild(addBtn);
+      li.appendChild(fileInput);
     }
+
+    // 削除ボタン（組み込み科目も削除可。ただし最後の1科目は残す）
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "削除";
+    delBtn.className = "del";
+    delBtn.onclick = () => {
+      if (allSubjects().length <= 1) {
+        alert("最後の科目は削除できません。");
+        return;
+      }
+      const confirmMsg = s.builtin
+        ? `組み込み科目「${s.name}」を削除しますか？（一覧から消えます）`
+        : `科目「${s.name}」を削除しますか？`;
+      if (confirm(confirmMsg)) {
+        deleteSubject(s.id);
+        refreshSubjectName();
+        newQuestion();
+        renderSubjectList();
+      }
+    };
+    li.appendChild(delBtn);
     ul.appendChild(li);
   });
 }
