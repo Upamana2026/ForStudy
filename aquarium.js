@@ -7,6 +7,8 @@ const Aquarium = (() => {
   let critters = []; // ドジョウ・タニシ・タナゴ（魚とは独立。アプリを開いている間ずっと滞在）
   let food = [];
   let bubbles = [];
+  let marimos = []; // 水底のマリモ。app側が48時間のTTLを管理し、表示する位置リストを渡す
+  let gather = null; // クリックで発生する一時的な集合点 { x, y, t(残りフレーム) }
   let raf = null;
 
   const CRITTER_SPECIES = ["dojo", "tanishi", "tanago"];
@@ -43,6 +45,17 @@ const Aquarium = (() => {
       y: Math.random() * H,
       s: 0.3 + Math.random() * 0.5,
     }));
+
+    // 水槽をタップ／クリックすると、その場所に魚が一時的に集まる
+    canvas.addEventListener("pointerdown", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      gather = {
+        x: (e.clientX - rect.left) * (W / rect.width),
+        y: (e.clientY - rect.top) * (H / rect.height),
+        t: 150, // 約2.5秒間あつまる
+      };
+    });
+
     if (!raf) loop();
   }
 
@@ -183,7 +196,38 @@ const Aquarium = (() => {
     for (let i = 0; i < 7; i++) ctx.fillRect(28 - (i % 2) * PX, H - PX * 2 - i * PX, PX, PX);
   }
 
+  // --- マリモ（水底に居座る緑の藻玉。app側がTTLを管理し位置を渡す） ---
+
+  // list: [{ id, fx(0..1の横位置) }, ...]。既存の見た目（半径）はidで引き継ぐ
+  function setMarimos(list) {
+    const next = [];
+    for (const m of (list || [])) {
+      const prev = marimos.find((e) => e.id === m.id);
+      if (prev) { prev.fx = m.fx; next.push(prev); }
+      else next.push({ id: m.id, fx: m.fx, r: 3 + Math.floor(Math.random() * 3) });
+    }
+    marimos = next;
+  }
+
+  function drawMarimo(m) {
+    const r = m.r;
+    const cx = Math.round((m.fx * W) / PX);
+    const cy = Math.round(H / PX) - 2 - r; // 砂利の上に乗せる
+    for (let i = -r; i <= r; i++) {
+      for (let j = -r; j <= r; j++) {
+        const e = (i * i + j * j) / (r * r + 0.5);
+        if (e <= 1) {
+          let c = "#3f7a3a";
+          if (e > 0.72) c = "#2c5526";                 // 縁を濃く
+          else if (((i + j + 80) % 2) === 0) c = "#54a049"; // ふさふさのハイライト
+          put(cx + i, cy + j, c);
+        }
+      }
+    }
+  }
+
   function update() {
+    if (gather && --gather.t <= 0) gather = null;
     for (const b of bubbles) {
       b.y -= b.s;
       if (b.y < -4) { b.y = H + 4; b.x = Math.random() * W; }
@@ -197,7 +241,13 @@ const Aquarium = (() => {
         const d = (p.x - f.x) ** 2 + (p.y - f.y) ** 2;
         if (d < nd) { nd = d; nf = p; }
       }
-      if (nf) {
+      if (gather) {
+        // クリックされた場所へ集まる（餌より強い引力）
+        const dx = gather.x - f.x, dy = gather.y - f.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        f.vx += (dx / dist) * 0.13;
+        f.vy += (dy / dist) * 0.13;
+      } else if (nf) {
         const dx = nf.x - f.x, dy = nf.y - f.y;
         const dist = Math.hypot(dx, dy) || 1;
         f.vx += (dx / dist) * 0.07;
@@ -496,6 +546,7 @@ const Aquarium = (() => {
     for (const b of bubbles) ctx.fillRect(Math.round(b.x / PX) * PX, Math.round(b.y / PX) * PX, PX, PX);
 
     drawScenery();
+    for (const m of marimos) drawMarimo(m); // 水底に居座るマリモ
 
     for (const p of passers) drawPasser(p); // 魚より先に描く＝金魚たちの後ろを通過
 
@@ -512,5 +563,5 @@ const Aquarium = (() => {
     raf = requestAnimationFrame(loop);
   }
 
-  return { init, setPopulation, feed, addCritter, spawnPassers };
+  return { init, setPopulation, feed, addCritter, spawnPassers, setMarimos };
 })();

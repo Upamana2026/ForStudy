@@ -1,12 +1,13 @@
 // app.js — 進捗管理・出題フロー・科目管理・水槽との連携
 
 const KEY = "medaka_quiz_v1";
-let state = { correct: 0, answered: 0, streak: 0, best: 0, bornCount: 1, fishSeq: 0, fish: null };
+let state = { correct: 0, answered: 0, streak: 0, best: 0, bornCount: 1, fishSeq: 0, fish: null, marimos: [], marimoSeq: 0 };
 let current = null;
 let locked = false;
 let pendingQuestions = null; // 追加待ちの取り込み結果
 
 const MAX_FISH = 15;
+const MARIMO_TTL = 48 * 60 * 60 * 1000; // マリモの滞在時間：48時間
 const GOLDFISH = ["demekin", "comet", "panda", "pingpong", "ranchu"];
 const SPECIES_NAME = {
   medaka: "メダカ",
@@ -95,6 +96,30 @@ function maybeSpawnCritters() {
   });
 }
 
+// --- マリモ（10問正解ごとに水底へ出現し、48時間で消える） ---
+function nextMarimoId() {
+  state.marimoSeq = (state.marimoSeq || 0) + 1;
+  return state.marimoSeq;
+}
+// 期限切れのマリモを取り除く。除去があれば true
+function pruneMarimos() {
+  if (!Array.isArray(state.marimos)) { state.marimos = []; return false; }
+  const now = Date.now();
+  const before = state.marimos.length;
+  state.marimos = state.marimos.filter((m) => now - m.bornAt < MARIMO_TTL);
+  return state.marimos.length !== before;
+}
+// マリモを1つ追加（横位置はランダム）
+function spawnMarimo() {
+  if (!Array.isArray(state.marimos)) state.marimos = [];
+  state.marimos.push({ id: nextMarimoId(), fx: 0.08 + Math.random() * 0.84, bornAt: Date.now() });
+}
+// 期限を整理して水槽に反映
+function syncMarimos() {
+  pruneMarimos();
+  Aquarium.setMarimos(state.marimos);
+}
+
 // 現在の名簿を水槽用のspecsに変換
 function rosterSpecs() {
   return state.fish.map((f) => ({ stage: ageToStage(state.correct - f.bornAt), species: f.species }));
@@ -171,6 +196,14 @@ function answer(choice, btn) {
     Aquarium.feed(2);
     Aquarium.setPopulation(rosterSpecs());
 
+    // 10問正解ごとに水底へマリモが出現（48時間滞在）
+    let newMarimo = false;
+    if (state.correct % 10 === 0) {
+      spawnMarimo();
+      syncMarimos();
+      newMarimo = true;
+    }
+
     if (graduated) {
       fb.textContent = `正解！🎓 ${SPECIES_NAME[graduated]}が旅に出ました！代わりに新しい仲間が誕生`;
     } else if (born) {
@@ -180,6 +213,7 @@ function answer(choice, btn) {
     } else {
       fb.textContent = "正解！🐟 餌をあげました";
     }
+    if (newMarimo) fb.textContent += " ＋🟢マリモが出現！";
     fb.className = "feedback ok";
   } else {
     state.streak = 0;
@@ -418,9 +452,12 @@ window.addEventListener("DOMContentLoaded", async () => {
   ensureRoster();
   Aquarium.init(document.getElementById("tank"));
   Aquarium.setPopulation(rosterSpecs());
+  syncMarimos(); // 起動時に期限切れマリモを整理して水底に表示
   maybeSpawnCritters();
   // 起動から1分ごとに、大型生物（ガー・シーラカンス・カメ）が魚の後ろを横切る
   setInterval(() => Aquarium.spawnPassers(), 60000);
+  // 1分ごとに48時間経過したマリモを掃除（変化があれば保存）
+  setInterval(() => { if (pruneMarimos()) save(); Aquarium.setMarimos(state.marimos); }, 60000);
   updateStats();
   refreshSubjectName();
   newQuestion();
@@ -428,10 +465,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("next").onclick = newQuestion;
   document.getElementById("reset").onclick = () => {
     if (confirm("進捗をリセットしますか？（メダカは1匹に戻ります。科目は消えません）")) {
-      state = { correct: 0, answered: 0, streak: 0, best: 0, bornCount: 1, fishSeq: 0, fish: null };
+      state = { correct: 0, answered: 0, streak: 0, best: 0, bornCount: 1, fishSeq: 0, fish: null, marimos: [], marimoSeq: 0 };
       ensureRoster();
       save();
       Aquarium.setPopulation(rosterSpecs());
+      Aquarium.setMarimos(state.marimos);
       updateStats();
       newQuestion();
     }
