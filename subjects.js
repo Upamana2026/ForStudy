@@ -61,18 +61,36 @@ function getQuestionFor(subject) {
   return buildBankQuestion(subject.questions);
 }
 
-// 問題集型: ランダムに1問選び、他の問題の答えをダミー選択肢にして4択化
+// 問題集型: ランダムに1問選んで4択化
+// 誤答は「その問題に指定された誤答（CSV 3〜5列目）」を優先し、
+// 足りない分だけ他の問題の答えから補充する（よくある誤答と正解を並べるため）。
 function buildBankQuestion(pool) {
   const item = pool[Math.floor(Math.random() * pool.length)];
   const answer = String(item.answer);
-  const others = [];
   const seen = new Set([answer]);
-  for (const q of pool) {
-    const a = String(q.answer);
-    if (!seen.has(a)) { seen.add(a); others.push(a); }
+  const wrong = [];
+
+  // 1) この問題に指定された誤答を優先
+  for (const d of (item.distractors || [])) {
+    const v = String(d).trim();
+    if (v && !seen.has(v)) { seen.add(v); wrong.push(v); }
   }
-  shuffle(others);
-  const choices = shuffle([answer, ...others.slice(0, 3)]);
+
+  // 2) 3つに満たなければ、他の問題の答えから補充
+  if (wrong.length < 3) {
+    const others = [];
+    for (const q of pool) {
+      const a = String(q.answer);
+      if (!seen.has(a)) { seen.add(a); others.push(a); }
+    }
+    shuffle(others);
+    for (const a of others) {
+      if (wrong.length >= 3) break;
+      wrong.push(a);
+    }
+  }
+
+  const choices = shuffle([answer, ...wrong.slice(0, 3)]);
   return { question: String(item.question), answer, choices };
 }
 
@@ -106,7 +124,8 @@ function isHeaderRow(row) {
          /回答|正解|答え|answer/i.test(row[1] || "");
 }
 
-// 2次元配列 → [{question, answer}]（1列目=問題, 2列目=正解）
+// 2次元配列 → [{question, answer, distractors?}]
+// 1列目=問題, 2列目=正解, 3〜5列目=指定の誤答選択肢（任意・空欄可）
 function rowsToQuestions(rows) {
   const out = [];
   let start = rows.length && isHeaderRow(rows[0]) ? 1 : 0;
@@ -114,7 +133,13 @@ function rowsToQuestions(rows) {
     const row = rows[r] || [];
     const q = String(row[0] ?? "").trim();
     const a = String(row[1] ?? "").trim();
-    if (q && a) out.push({ question: q, answer: a });
+    if (!q || !a) continue;
+    const distractors = [];
+    for (let c = 2; c <= 4; c++) {
+      const d = String(row[c] ?? "").trim();
+      if (d) distractors.push(d);
+    }
+    out.push(distractors.length ? { question: q, answer: a, distractors } : { question: q, answer: a });
   }
   return out;
 }
@@ -141,10 +166,10 @@ async function importFile(file) {
 // CSVテンプレートを生成してダウンロード
 function downloadTemplate() {
   const sample =
-    "問題,正解\n" +
-    "日本の首都は？,東京\n" +
-    "1+1=？,2\n" +
-    "\"複数行や,カンマを含む場合は\nダブルクォートで囲みます\",サンプル\n";
+    "問題,正解,誤答1,誤答2,誤答3\n" +
+    "日本の首都は？,東京,大阪,京都,\n" +
+    "1+1=？,2,3,,\n" +
+    "\"複数行や,カンマを含む場合は\nダブルクォートで囲みます\",サンプル,,,\n";
   const blob = new Blob(["﻿" + sample], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

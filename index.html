@@ -70,8 +70,8 @@
       <h3>新しい科目を追加</h3>
       <p class="hint">
         CSV または Excel(.xlsx) ファイルをアップロードしてください。<br />
-        <strong>1列目＝問題、2列目＝正解</strong> の形式です（1行目の見出しは自動で除外）。<br />
-        誤答の選択肢は、同じ科目の他の問題の答えから自動で作ります。
+        <strong>1列目＝問題、2列目＝正解、3〜5列目＝誤答（任意）</strong> の形式です（1行目の見出しは自動で除外）。<br />
+        3〜5列目に「よくある誤答」を入れるとその問題の選択肢に出ます。空欄なら、同じ科目の他の問題の答えから自動で補います。
       </p>
       <input id="new-subject-name" type="text" placeholder="科目名（例：英単語、世界史）" />
       <input id="new-subject-file" type="file" accept=".csv,.xlsx,.xls" />
