@@ -55,6 +55,18 @@ function deleteSubject(id) {
   if (localStorage.getItem(CURRENT_KEY) === id) setCurrentSubjectId(BUILTIN_ID);
 }
 
+// 既存科目に問題を追記（バンク型のユーザー科目のみ。CSV/Excelの形式は新規追加と同じ）
+function appendQuestions(id, questions) {
+  const list = loadUserSubjects();
+  const subj = list.find((s) => s.id === id);
+  if (!subj || subj.type !== "bank") {
+    throw new Error("この科目には問題を追加できません（自動生成科目・組み込み科目は対象外です）。");
+  }
+  subj.questions = subj.questions.concat(questions);
+  saveUserSubjects(list);
+  return subj;
+}
+
 // 1問取得（科目の種類で振り分け）
 function getQuestionFor(subject) {
   if (subject.type === "procedural") return (subject.gen || generateQuestion)();

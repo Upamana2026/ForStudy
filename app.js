@@ -219,6 +219,20 @@ function renderSubjectList() {
     li.appendChild(selBtn);
 
     if (!s.builtin) {
+      if (s.type === "bank") {
+        const addBtn = document.createElement("button");
+        addBtn.textContent = "問題を追加";
+        addBtn.className = "add-q";
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.accept = ".csv,.xlsx,.xls";
+        fileInput.style.display = "none";
+        fileInput.onchange = (ev) => onAppendFileChosen(ev, s.id);
+        addBtn.onclick = () => fileInput.click();
+        li.appendChild(addBtn);
+        li.appendChild(fileInput);
+      }
+
       const delBtn = document.createElement("button");
       delBtn.textContent = "削除";
       delBtn.className = "del";
@@ -266,6 +280,30 @@ async function onFileChosen(e) {
     // 科目名が空ならファイル名を初期値に
     const nameInput = document.getElementById("new-subject-name");
     if (!nameInput.value.trim()) nameInput.value = file.name.replace(/\.(csv|xlsx|xls)$/i, "");
+  } catch (err) {
+    msg.textContent = "⚠ " + err.message;
+    msg.className = "import-msg ng";
+  }
+}
+
+// 既存科目に問題を追記（一覧の「問題を追加」ボタンから）
+async function onAppendFileChosen(e, subjectId) {
+  const msg = document.getElementById("import-msg");
+  const file = e.target.files[0];
+  e.target.value = ""; // 同じファイルを連続選択できるようにリセット
+  if (!file) return;
+  try {
+    const qs = await importFile(file);
+    if (qs.length === 0) {
+      msg.textContent = "⚠ 問題を読み取れませんでした。1列目=問題、2列目=正解になっているか確認してください。";
+      msg.className = "import-msg ng";
+      return;
+    }
+    const subj = appendQuestions(subjectId, qs);
+    if (getCurrentSubjectId() === subjectId) newQuestion(); // 出題中の科目なら次問に反映
+    renderSubjectList();
+    msg.textContent = `✓ 科目「${subj.name}」に ${qs.length}問 追加しました（合計 ${subj.questions.length}問）。`;
+    msg.className = "import-msg ok";
   } catch (err) {
     msg.textContent = "⚠ " + err.message;
     msg.className = "import-msg ng";

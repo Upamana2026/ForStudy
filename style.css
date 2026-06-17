@@ -80,6 +80,33 @@ h1 {
 }
 #open-subjects:hover { background: #1a5076; }
 
+#backup-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #11303f;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 12px 0 0;
+  font-size: 12px;
+  opacity: 0.95;
+}
+#backup-status { flex: 1 1 auto; min-width: 0; }
+.backup-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+#backup-bar button {
+  font-size: 12px;
+  padding: 6px 12px;
+  border: 1px solid #2c6e98;
+  border-radius: 6px;
+  background: #123a52;
+  color: #e8f1f7;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#backup-bar button:hover { background: #1a5076; }
+
 .modal {
   position: fixed;
   inset: 0;
@@ -127,6 +154,7 @@ h1 {
 }
 #subject-list button:disabled { opacity: 0.5; cursor: default; }
 #subject-list button.del { background: #6a2330; border-color: #a13b4c; }
+#subject-list button.add-q { background: #1f5a3a; border-color: #34a06a; }
 
 #new-subject-name, #new-subject-file {
   width: 100%;
